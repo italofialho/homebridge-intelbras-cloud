@@ -34,18 +34,21 @@ function fixture() {
   };
 }
 test("live startup acknowledges FFmpeg spawn without waiting for progress or probing again", async (t) => {
-  const { camera, request } = fixture();
+  const { camera, session, request } = fixture();
+  session.ssrc = 0xdeadbeef;
   const child = new EventEmitter();
   child.stdout = new EventEmitter();
   child.stdout.resume = () => {};
   t.mock.method(media, "probe", async () => {
     throw Error("Unexpected duplicate probe");
   });
-  t.mock.method(media, "runMedia", () => child);
+  const run = t.mock.method(media, "runMedia", () => child);
   t.mock.method(media, "stopMedia", () => {});
   const replies = [];
   await camera.start(request, (e) => replies.push(e));
   assert.equal(replies.length, 0);
+  const args = run.mock.calls[0].arguments[0];
+  assert.equal(args[args.indexOf("-ssrc") + 1], String(0xdeadbeef | 0));
   child.emit("spawn");
   assert.deepEqual(replies, [undefined]);
   child.emit("error", Error("late failure"));

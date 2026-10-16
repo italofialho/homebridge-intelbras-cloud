@@ -89,3 +89,14 @@ native-only HKSV resolution advertising when conversion is disabled.
 HKSV copy mode now advertises the selected source dimensions and FPS only. A Home
 Hub may still request an incompatible profile, bitrate or cached configuration;
 recording then fails explicitly. This does not certify an iCloud timeline clip.
+
+A real-source loopback SRTP test then reproduced FFmpeg rejecting unsigned SSRC
+values above INT32_MAX. Beta.8 passes the identical 32-bit SSRC as a signed int32
+to FFmpeg, while retaining the unsigned HomeKit negotiation value. The startup
+regression test includes a high-bit SSRC.
+
+Beta.8 was tested against the real Cloud source on Raspberry ARM64 with three
+sequential Channel 4 SRTP sessions, forcing SSRC 0xdeadbeef each time. Startup
+callbacks completed in 44/9/10 ms; first encrypted RTP packets arrived in
+5080/5137/4976 ms. Every cancellation terminated FFmpeg and removed its session.
+These loopback transport checks do not replace viewing in Apple Home.

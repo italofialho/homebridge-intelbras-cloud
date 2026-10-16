@@ -286,7 +286,9 @@ export class Camera implements CameraStreamingDelegate {
         "-payload_type",
         String(request.video.pt),
         "-ssrc",
-        String(s.ssrc),
+        // FFmpeg accepts a signed int32; HomeKit negotiates the same 32 bits
+        // as an unsigned value. Preserve the bits when the high bit is set.
+        String(s.ssrc | 0),
         "-f",
         "rtp",
         "-srtp_out_suite",
