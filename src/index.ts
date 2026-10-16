@@ -81,7 +81,9 @@ class Platform implements DynamicPlatformPlugin {
             dvr.firmware.slice(0, 64),
           );
         this.cameras.push(
-          new Camera(this.api, dvr, c, a, (s) => this.log.warn(s)),
+          new Camera(this.api, dvr, c, a, (s) =>
+            this.log.warn(`Channel ${c.id}: ${s}`),
+          ),
         );
         accessories.push(a);
       }

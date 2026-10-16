@@ -29,6 +29,7 @@ interface Session {
   release?: () => void;
   cancelled: boolean;
   abort: AbortController;
+  pendingStart?: (error?: Error) => void;
 }
 export class Camera implements CameraStreamingDelegate {
   readonly controller: CameraController;
@@ -101,7 +102,10 @@ export class Camera implements CameraStreamingDelegate {
                 video: {
                   type: h.VideoCodecType.H264,
                   parameters: codec,
-                  resolutions,
+                  resolutions:
+                    !channel.transcode && detected?.width && detected.height
+                      ? [[detected.width, detected.height, detected.fps || 25]]
+                      : resolutions,
                 },
                 audio: {
                   codecs: [
@@ -209,19 +213,37 @@ export class Camera implements CameraStreamingDelegate {
       callback(new Error("Unknown camera session"));
       return;
     }
+    clearTimeout(s.timer);
     let answered = false;
+    const startupTimer = setTimeout(() => {
+      answer(new Error("Video startup timed out"));
+      this.stop(request.sessionID);
+      this.controller.forceStopStreamingSession(request.sessionID);
+    }, 7000);
     const answer = (err?: Error) => {
       if (!answered) {
         answered = true;
+        clearTimeout(startupTimer);
+        s.pendingStart = undefined;
         callback(err);
       }
     };
+    s.pendingStart = answer;
     try {
       const url = await this.dvr.rtsp(
           this.channel.id,
           this.channel.stream === "primary",
         ),
-        info = await probe(url, s.abort.signal);
+        detected = this.dvr.channels.find((c) => c.id === this.channel.id)?.[
+          this.channel.stream === "primary" ? "primary" : "secondary"
+        ];
+      if (s.cancelled) throw new Error("Session cancelled");
+      // Discovery already reads the selected encoder codec. Avoid opening a
+      // second RTSP decoder before every live session, especially at low FPS.
+      const info =
+        detected && /^(h[.]?264|h[.]?265|hevc)$/i.test(detected.codec)
+          ? { codec: detected.codec.toLowerCase().replace(".", "") }
+          : await probe(url, s.abort.signal);
       if (s.cancelled) {
         answer(new Error("Session cancelled"));
         return;
@@ -283,8 +305,14 @@ export class Camera implements CameraStreamingDelegate {
         this.controller.forceStopStreamingSession(request.sessionID);
       });
       s.process = p;
-      p.once("error", () => answer(new Error("Unable to start FFmpeg")));
-      p.stdout!.once("data", () => answer());
+      p.once("error", () => {
+        answer(new Error("Unable to start FFmpeg"));
+        this.stop(request.sessionID);
+      });
+      // Acknowledge process startup promptly. Media readiness and RTCP remain
+      // monitored separately, without holding the HomeKit write callback open.
+      p.once("spawn", () => answer());
+      p.stdout!.resume();
       const arm = () => {
         clearTimeout(s.timer);
         s.timer = setTimeout(
@@ -307,6 +335,7 @@ export class Camera implements CameraStreamingDelegate {
     const s = this.sessions.get(id);
     if (!s) return;
     s.cancelled = true;
+    s.pendingStart?.(new Error("Session cancelled"));
     s.abort.abort();
     clearTimeout(s.timer);
     try {

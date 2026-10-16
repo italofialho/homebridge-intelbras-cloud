@@ -128,7 +128,7 @@ export class RecordingDelegate implements CameraRecordingDelegate {
           source.fps > fps)
       )
         throw new Error(
-          "HKSV negotiated format requires explicit conversion for this channel",
+          `HKSV source ${source.width}x${source.height}@${source.fps} ${source.codec} cannot supply negotiated ${w}x${h}@${fps} without conversion; enable conversion for this channel or disable recording in Apple Home`,
         );
       const release = transcode ? conversions.acquire() : undefined;
       if (gen !== this.generation) {

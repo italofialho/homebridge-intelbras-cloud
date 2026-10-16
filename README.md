@@ -39,13 +39,13 @@ not require TypeScript or a GitHub account on the Homebridge host.
 On a standard Homebridge host:
 
 ```sh
-npm install -g https://github.com/italofialho/homebridge-intelbras-cloud/releases/download/v0.1.0-beta.6/homebridge-intelbras-cloud-0.1.0-beta.6.tgz
+npm install -g https://github.com/italofialho/homebridge-intelbras-cloud/releases/download/v0.1.0-beta.7/homebridge-intelbras-cloud-0.1.0-beta.7.tgz
 ```
 
 For the official Docker container, run on the Docker host:
 
 ```sh
-docker exec homebridge npm install --prefix /homebridge https://github.com/italofialho/homebridge-intelbras-cloud/releases/download/v0.1.0-beta.6/homebridge-intelbras-cloud-0.1.0-beta.6.tgz
+docker exec homebridge npm install --prefix /homebridge https://github.com/italofialho/homebridge-intelbras-cloud/releases/download/v0.1.0-beta.7/homebridge-intelbras-cloud-0.1.0-beta.7.tgz
 docker restart homebridge
 ```
 
@@ -57,7 +57,7 @@ Source installation is also supported (requires Git and builds TypeScript during
 installation):
 
 ```sh
-npm install -g github:italofialho/homebridge-intelbras-cloud#v0.1.0-beta.6
+npm install -g github:italofialho/homebridge-intelbras-cloud#v0.1.0-beta.7
 ```
 
 Use a tagged release for reproducible installs. Check the
@@ -67,7 +67,7 @@ preserves its configuration; keep device IDs unchanged to preserve identities.
 
 ### 1. Obtain or build a local package
 
-If you already have `homebridge-intelbras-cloud-0.1.0-beta.6.tgz`, continue to the
+If you already have `homebridge-intelbras-cloud-0.1.0-beta.7.tgz`, continue to the
 next step. To build it from the plugin source directory:
 
 ```sh
@@ -86,7 +86,7 @@ Copy the package to the machine running Homebridge. Install it globally using th
 same Node.js/npm installation that Homebridge uses:
 
 ```sh
-npm install -g /absolute/path/homebridge-intelbras-cloud-0.1.0-beta.6.tgz
+npm install -g /absolute/path/homebridge-intelbras-cloud-0.1.0-beta.7.tgz
 ```
 
 Use `sudo` only if your Homebridge installation requires it. Restart Homebridge
@@ -94,7 +94,7 @@ from its UI, or use `sudo hb-service restart` if it is managed by `hb-service`.
 The startup log should contain:
 
 ```text
-Loaded plugin: homebridge-intelbras-cloud@0.1.0-beta.6
+Loaded plugin: homebridge-intelbras-cloud@0.1.0-beta.7
 Registering platform 'homebridge-intelbras-cloud.IntelbrasCloud'
 ```
 
@@ -106,8 +106,8 @@ Run these commands on the Docker host, where the `.tgz` is located:
 
 ```sh
 docker exec homebridge mkdir -p /homebridge/plugin-packages
-docker cp /absolute/path/homebridge-intelbras-cloud-0.1.0-beta.6.tgz homebridge:/homebridge/plugin-packages/
-docker exec homebridge npm install --prefix /homebridge /homebridge/plugin-packages/homebridge-intelbras-cloud-0.1.0-beta.6.tgz
+docker cp /absolute/path/homebridge-intelbras-cloud-0.1.0-beta.7.tgz homebridge:/homebridge/plugin-packages/
+docker exec homebridge npm install --prefix /homebridge /homebridge/plugin-packages/homebridge-intelbras-cloud-0.1.0-beta.7.tgz
 docker restart homebridge
 ```
 
@@ -119,7 +119,7 @@ If the package is already available inside the container, you can instead run th
 in **Homebridge UI → Terminal**:
 
 ```sh
-npm install --prefix /homebridge /homebridge/plugin-packages/homebridge-intelbras-cloud-0.1.0-beta.6.tgz
+npm install --prefix /homebridge /homebridge/plugin-packages/homebridge-intelbras-cloud-0.1.0-beta.7.tgz
 ```
 
 Then restart Homebridge from the UI. Before updating a working installation, keep a

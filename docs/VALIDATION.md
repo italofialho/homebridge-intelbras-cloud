@@ -76,3 +76,16 @@ The read-only protocol tests did not change DVR settings. The later migration
 changed only the explicitly approved Homebridge configuration and legacy transport
 startup policies. Backups were retained for rollback. No public publication was
 performed.
+
+## Live-session callback regression coverage
+
+The beta.7 fix acknowledges FFmpeg process startup separately from media readiness,
+uses the discovered encoder codec instead of probing a second RTSP stream for each
+view, and bounds startup acknowledgement to seven seconds. Cancellation and process
+failures complete the callback exactly once and clean up the session. Regression
+tests cover a blocked endpoint, cancellation, startup without progress output, and
+native-only HKSV resolution advertising when conversion is disabled.
+
+HKSV copy mode now advertises the selected source dimensions and FPS only. A Home
+Hub may still request an incompatible profile, bitrate or cached configuration;
+recording then fails explicitly. This does not certify an iCloud timeline clip.
