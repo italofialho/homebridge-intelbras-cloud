@@ -1,0 +1,12 @@
+homebridge-intelbras-cloud
+Copyright 2026 contributors
+
+Camera session negotiation, supported H.264 configurations and FFmpeg SRTP argument
+structure in src/camera.ts are adapted from Homebridge Camera FFmpeg,
+Copyright Homebridge Camera FFmpeg contributors, Apache License 2.0.
+Upstream: https://github.com/homebridge-plugins/homebridge-camera-ffmpeg
+Revision: 7522d924bedf922b3a7a4d71d35eb722dd3d790e
+The original reference is retained in vendor/streamingDelegate.ts in the source tree.
+This package independently implements DVR discovery, T2U CONNECT, HTTP APIs,
+recording buffering and Homebridge UI integration. No Intelbras vendor binary is used.
+Intelbras and HomeKit are trademarks of their respective owners. No affiliation implied.

@@ -1,0 +1,384 @@
+<div class="ng-bs5-validate" lang="en">
+  <div class="btn-group mb-3" role="tablist" aria-label="Intelbras Cloud">
+    <button
+      type="button"
+      id="settings"
+      class="btn btn-primary"
+      role="tab"
+      aria-selected="true"
+    >
+      Settings
+    </button>
+    <button
+      type="button"
+      id="diagnostics-tab"
+      class="btn btn-elegant"
+      role="tab"
+      aria-selected="false"
+    >
+      Diagnostics
+    </button>
+    <button
+      type="button"
+      id="history-tab"
+      class="btn btn-elegant"
+      role="tab"
+      aria-selected="false"
+    >
+      History
+    </button>
+  </div>
+  <div id="tools" hidden>
+    <div class="row align-items-end">
+      <div class="form-group col-sm-8">
+        <label for="device">Device</label
+        ><select id="device" class="form-control form-select"></select>
+      </div>
+      <div class="form-group col-sm-4">
+        <button type="button" id="diagnose" class="btn btn-primary">
+          Connect and discover channels
+        </button>
+      </div>
+    </div>
+    <p id="status" class="text-muted" role="status" aria-live="polite"></p>
+    <section id="diagnostics" hidden>
+      <p id="info" class="text-muted"></p>
+      <div class="table-responsive">
+        <table class="table table-striped table-sm">
+          <thead>
+            <tr>
+              <th scope="col">Channel</th>
+              <th scope="col">Name</th>
+              <th scope="col">Secondary</th>
+              <th scope="col">Primary</th>
+            </tr>
+          </thead>
+          <tbody id="capabilities"></tbody>
+        </table>
+      </div>
+      <small class="form-text text-muted mb-3"
+        >Select and rename channels in the Settings tab.</small
+      >
+    </section>
+    <div class="row align-items-end">
+      <div class="form-group col-sm-8">
+        <label for="channel">Channel</label
+        ><select id="channel" class="form-control form-select"></select>
+      </div>
+      <div class="form-group col-sm-4">
+        <button type="button" id="snapshot" class="btn btn-primary">
+          View snapshot
+        </button>
+      </div>
+    </div>
+    <img
+      id="image"
+      class="img-fluid rounded mb-3"
+      alt="Selected channel preview"
+      hidden
+    />
+    <section id="history" hidden>
+      <small class="form-text text-muted mb-3"
+        >Use the local time shown by the DVR. Times are not converted to another
+        time zone.</small
+      >
+      <div class="row">
+        <div class="form-group col-sm-6">
+          <label for="start">Start</label
+          ><input
+            id="start"
+            class="form-control"
+            type="datetime-local"
+            step="1"
+          />
+        </div>
+        <div class="form-group col-sm-6">
+          <label for="end">End</label
+          ><input
+            id="end"
+            class="form-control"
+            type="datetime-local"
+            step="1"
+          />
+        </div>
+      </div>
+      <div class="mb-3">
+        <button type="button" id="search" class="btn btn-primary">Search</button
+        ><button
+          type="button"
+          id="next"
+          class="btn btn-secondary ml-2 ms-2"
+          disabled
+        >
+          Next page
+        </button>
+      </div>
+      <div
+        id="timeline"
+        class="progress position-relative mb-3"
+        aria-label="Recording intervals on this page"
+      ></div>
+      <div class="table-responsive">
+        <table class="table table-striped table-sm">
+          <thead>
+            <tr>
+              <th scope="col">Start</th>
+              <th scope="col">End</th>
+              <th scope="col">Type</th>
+              <th scope="col">Clip</th>
+            </tr>
+          </thead>
+          <tbody id="results"></tbody>
+        </table>
+      </div>
+      <small class="form-text text-muted mb-3"
+        >Select a clip up to 5 minutes and 32 MiB for playback or export.
+        Incompatible video requires conversion.</small
+      >
+      <div class="form-group form-check">
+        <input id="convert" class="form-check-input" type="checkbox" /><label
+          class="form-check-label"
+          for="convert"
+          >Convert video to H.264 (uses CPU)</label
+        >
+      </div>
+      <div class="mb-3">
+        <button type="button" id="play" class="btn btn-primary">
+          Play clip</button
+        ><button type="button" id="export" class="btn btn-secondary ml-2 ms-2">
+          Export MP4</button
+        ><button type="button" id="cancel" class="btn btn-secondary ml-2 ms-2">
+          Cancel
+        </button>
+      </div>
+      <video
+        id="video"
+        class="w-100 rounded"
+        aria-label="Camera recording playback"
+        controls
+        hidden
+      ></video>
+    </section>
+  </div>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let config = [],
+    devices = [],
+    found = [],
+    offset = 0,
+    query = null,
+    job = null,
+    objectUrl = null;
+  const status = (s) => ($("status").textContent = s);
+  const device = () => devices[Number($("device").value)];
+  async function request(path, body = {}) {
+    return window.homebridge.request(path, { device: device(), ...body });
+  }
+  function local(t) {
+    const value = t.replace("T", " ");
+    return value.length === 16 ? value + ":00" : value;
+  }
+  function range() {
+    return {
+      channel: Number($("channel").value),
+      start: local($("start").value),
+      end: local($("end").value),
+    };
+  }
+  function button(id, fn) {
+    $(id).onclick = async () => {
+      try {
+        $(id).disabled = true;
+        status("Please wait…");
+        await fn();
+        status("Done");
+      } catch (e) {
+        status(e.message || String(e));
+        window.homebridge.toast.error(e.message || String(e));
+      } finally {
+        $(id).disabled = false;
+      }
+    };
+  }
+  async function diagnose() {
+    const r = await request("/diagnose");
+    found = r.channels;
+    $("info").textContent =
+      `${r.model} · Firmware ${r.firmware} · Channels: ${r.channels.length}`;
+    $("capabilities").replaceChildren();
+    $("channel").replaceChildren();
+    for (const c of found) {
+      const row = document.createElement("tr");
+      const stream = (s) =>
+        `${s.codec} · ${s.width} × ${s.height} · ${s.fps} fps`;
+      for (const value of [
+        String(c.id),
+        c.name,
+        stream(c.secondary),
+        stream(c.primary),
+      ]) {
+        const td = document.createElement("td");
+        td.textContent = value;
+        row.append(td);
+      }
+      $("capabilities").append(row);
+      $("channel").add(new Option(c.name, c.id));
+    }
+  }
+  $("device").onchange = () => {
+    found = [];
+    query = null;
+    offset = 0;
+    $("next").disabled = true;
+    $("capabilities").replaceChildren();
+    $("channel").replaceChildren();
+    $("results").replaceChildren();
+    $("info").textContent = "";
+  };
+  button("diagnose", diagnose);
+  button("snapshot", async () => {
+    const r = await request("/snapshot", {
+      channel: Number($("channel").value),
+    });
+    $("image").src = "data:image/jpeg;base64," + r.jpeg;
+    $("image").hidden = false;
+  });
+  async function search(next) {
+    if (!next) {
+      offset = 0;
+      query = range();
+    }
+    const r = await request("/search", { ...query, offset });
+    $("results").replaceChildren();
+    $("timeline").replaceChildren();
+    for (const x of r.items) {
+      const row = document.createElement("tr");
+      for (const v of [x.start, x.end, x.type]) {
+        const td = document.createElement("td");
+        td.textContent = v;
+        row.append(td);
+      }
+      const td = document.createElement("td"),
+        b = document.createElement("button");
+      b.textContent = "Select";
+      b.className = "btn btn-primary btn-sm";
+      b.onclick = () => {
+        $("start").value = x.start.replace(" ", "T");
+        const end = new Date(
+          Math.min(
+            Date.parse(x.end.replace(" ", "T") + "Z"),
+            Date.parse(x.start.replace(" ", "T") + "Z") + 300000,
+          ),
+        );
+        $("end").value = end.toISOString().slice(0, 19);
+      };
+      td.append(b);
+      row.append(td);
+      $("results").append(row);
+      const start = Date.parse(query.start.replace(" ", "T") + "Z"),
+        end = Date.parse(query.end.replace(" ", "T") + "Z"),
+        a = Date.parse(x.start.replace(" ", "T") + "Z"),
+        z = Date.parse(x.end.replace(" ", "T") + "Z");
+      const bar = document.createElement("span");
+      bar.className = "progress-bar bg-success position-absolute h-100";
+      bar.style.left = Math.max(0, ((a - start) / (end - start)) * 100) + "%";
+      bar.style.width =
+        Math.max(
+          0,
+          ((Math.min(z, end) - Math.max(a, start)) / (end - start)) * 100,
+        ) + "%";
+      bar.title = x.start + " – " + x.end;
+      $("timeline").append(bar);
+    }
+    $("next").disabled = !r.hasMore;
+    offset += 100;
+  }
+  button("search", () => search(false));
+  $("next").onclick = () => search(true).catch((e) => status(e.message));
+  async function media(download) {
+    job = crypto.randomUUID();
+    const r = await request("/media", {
+      ...range(),
+      convert: $("convert").checked,
+      job,
+    });
+    const bytes = Uint8Array.from(atob(r.mp4), (c) => c.charCodeAt(0));
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(new Blob([bytes], { type: r.mime }));
+    if (download) {
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = "intelbras-clip.mp4";
+      a.click();
+    } else {
+      $("video").src = objectUrl;
+      $("video").hidden = false;
+      await $("video").play();
+    }
+    job = null;
+  }
+  button("play", () => media(false));
+  button("export", () => media(true));
+  button("cancel", async () => {
+    if (job) await request("/cancel", { job });
+  });
+  window.addEventListener("unload", () => {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    if (job) window.homebridge.request("/cancel", { job });
+  });
+  function loadConfig(value) {
+    config = value;
+    devices = config.flatMap((c) => c.devices || []);
+    $("device").replaceChildren();
+    devices.forEach((d, i) => $("device").add(new Option(d.name || d.id, i)));
+    found = [];
+    query = null;
+    offset = 0;
+    $("next").disabled = true;
+    $("capabilities").replaceChildren();
+    $("channel").replaceChildren();
+  }
+  window.homebridge.addEventListener("configChanged", (event) =>
+    loadConfig(event.data),
+  );
+  function view(name) {
+    for (const [id, target] of [
+      ["settings", "settings"],
+      ["diagnostics-tab", "diagnostics"],
+      ["history-tab", "history"],
+    ]) {
+      $(id).classList.toggle("btn-primary", name === target);
+      $(id).classList.toggle("btn-elegant", name !== target);
+      $(id).setAttribute("aria-selected", String(name === target));
+    }
+    $("tools").hidden = name === "settings";
+    $("diagnostics").hidden = name !== "diagnostics";
+    $("history").hidden = name !== "history";
+    if (name === "settings") window.homebridge.showSchemaForm();
+    else window.homebridge.hideSchemaForm();
+  }
+  $("settings").onclick = (event) => {
+    event.preventDefault();
+    view("settings");
+  };
+  $("diagnostics-tab").onclick = (event) => {
+    event.preventDefault();
+    view("diagnostics");
+  };
+  $("history-tab").onclick = (event) => {
+    event.preventDefault();
+    view("history");
+  };
+  (async () => {
+    view("settings");
+    loadConfig(await window.homebridge.getPluginConfig());
+    if (!devices.length) status("Add a device in the plugin settings.");
+    const now = new Date(),
+      date = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 10);
+    $("start").value = date + "T00:00:00";
+    $("end").value = date + "T23:59:59";
+  })().catch((e) => status(e.message));
+</script>

@@ -1,0 +1,132 @@
+{
+  "pluginAlias": "IntelbrasCloud",
+  "pluginType": "platform",
+  "singular": true,
+  "customUi": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "default": "Intelbras Cloud",
+        "title": "Platform name"
+      },
+      "devices": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "title": "Stable device ID (keep unchanged after pairing)",
+              "type": "string"
+            },
+            "name": {
+              "title": "DVR name",
+              "type": "string"
+            },
+            "mode": {
+              "title": "Connection",
+              "type": "string",
+              "enum": ["cloud", "direct"],
+              "default": "cloud",
+              "enumNames": [
+                "Cloud connection using a serial number",
+                "Direct connection using an IP address"
+              ]
+            },
+            "serial": {
+              "title": "Cloud serial number",
+              "type": "string"
+            },
+            "host": {
+              "title": "IP address or hostname (direct connection)",
+              "type": "string"
+            },
+            "username": {
+              "title": "Username",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "type": "string",
+              "format": "password"
+            },
+            "httpPort": {
+              "type": "integer",
+              "default": 80,
+              "minimum": 1,
+              "maximum": 65535,
+              "title": "HTTP port",
+              "x-schema-form": {
+                "type": "number"
+              }
+            },
+            "rtspPort": {
+              "type": "integer",
+              "default": 554,
+              "minimum": 1,
+              "maximum": 65535,
+              "title": "RTSP port",
+              "x-schema-form": {
+                "type": "number"
+              }
+            },
+            "timezone": {
+              "title": "DVR time zone (informational)",
+              "type": "string",
+              "default": "America/Sao_Paulo"
+            },
+            "channels": {
+              "title": "Channels (leave empty to discover all)",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "title": "Channel number",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 256,
+                    "x-schema-form": {
+                      "type": "number"
+                    },
+                    "description": "Channel number on the DVR, from 1 to 256."
+                  },
+                  "name": {
+                    "title": "Name",
+                    "type": "string"
+                  },
+                  "stream": {
+                    "title": "Camera video",
+                    "type": "string",
+                    "enum": ["secondary", "primary"],
+                    "default": "secondary",
+                    "enumNames": [
+                      "Secondary — lighter stream (recommended)",
+                      "Primary — higher quality"
+                    ],
+                    "description": "The secondary stream uses less bandwidth and processing. The primary stream uses the main quality configured on the DVR and may require conversion for Apple Home, for example with H.265 video."
+                  },
+                  "hksv": {
+                    "title": "Enable HomeKit Secure Video",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "transcode": {
+                    "title": "Allow video conversion for Apple Home",
+                    "type": "boolean",
+                    "default": false,
+                    "description": "May be required for H.265. Uses more Raspberry Pi processing power. The default limit is one video conversion at a time."
+                  }
+                },
+                "required": ["id"]
+              }
+            }
+          },
+          "required": ["id", "name", "mode", "username", "password"]
+        },
+        "title": "DVRs"
+      }
+    }
+  }
+}
